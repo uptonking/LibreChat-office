@@ -8,6 +8,7 @@ const StructuredWolfram = require('./structured/Wolfram');
 const createYouTubeTools = require('./structured/YouTube');
 const StructuredACS = require('./structured/AzureAISearch');
 const StructuredSD = require('./structured/StableDiffusion');
+const StructuredComfyUI = require('./structured/ComfyUI');
 const GoogleSearchAPI = require('./structured/GoogleSearch');
 const TraversaalSearch = require('./structured/TraversaalSearch');
 const createOpenAIImageTools = require('./structured/OpenAIImageTools');
@@ -20,6 +21,7 @@ module.exports = {
   FluxAPI,
   OpenWeather,
   StructuredSD,
+  StructuredComfyUI,
   StructuredACS,
   GoogleSearchAPI,
   TraversaalSearch,

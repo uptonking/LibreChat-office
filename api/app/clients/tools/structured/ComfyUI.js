@@ -1,4 +1,4 @@
-// Generates image using stable diffusion webui's api (automatic1111)
+// Generates image using ComfyUI webui's api (automatic1111)
 const fs = require('fs');
 const { z } = require('zod');
 const path = require('path');
@@ -11,9 +11,9 @@ const paths = require('~/config/paths');
 const { logger } = require('~/config');
 
 const displayMessage =
-  "Stable Diffusion displayed an image. All generated images are already plainly visible, so don't repeat the descriptions in detail. Do not list download links as they are available in the UI already. The user may download the images by clicking on them, but do not mention anything about downloading to the user.";
+  "ComfyUI displayed an image. All generated images are already plainly visible, so don't repeat the descriptions in detail. Do not list download links as they are available in the UI already. The user may download the images by clicking on them, but do not mention anything about downloading to the user.";
 
-class StableDiffusionAPI extends Tool {
+class ComfyUIAPI extends Tool {
   constructor(fields) {
     super();
     /** @type {string} User ID */
@@ -31,11 +31,11 @@ class StableDiffusionAPI extends Tool {
       this.uploadImageBuffer = fields.uploadImageBuffer.bind(this);
     }
 
-    this.name = 'stable-diffusion';
+    this.name = 'comfyui';
     this.url = fields.SD_WEBUI_URL || this.getServerURL();
     this.description_for_model = `// Generate images and visuals using text.
 // Guidelines:
-// - ALWAYS use {{"prompt": "7+ detailed keywords", "negative_prompt": "7+ detailed keywords"}} structure for queries.
+// - ALWAYS use {{"prompt": "5+ detailed keywords", "negative_prompt": "5+ detailed keywords"}} structure for queries.
 // - ALWAYS include the markdown url in your final response to show the user: ![caption](/images/id.png)
 // - Visually describe the moods, details, structures, styles, and/or proportions of the image. Remember, the focus is on visual attributes.
 // - Craft your input by "showing" and not "telling" the imagery. Think in terms of what you'd want to see in a photograph or a painting.
@@ -96,25 +96,28 @@ class StableDiffusionAPI extends Tool {
       prompt,
       negative_prompt,
       cfg_scale: 4.5,
-      steps: 7,
+      steps: 6,
       width: 512,
       height: 512,
     };
+
     let generationResponse;
     try {
       generationResponse = await axios.post(`${url}/sdapi/v1/txt2img`, payload);
     } catch (error) {
-      logger.error('[StableDiffusion] Error while generating image:', error);
+      logger.error('[ComfyUI] Error while generating image:', error);
       return 'Error making API request.';
     }
     const image = generationResponse.data.images[0];
+    console.log('cy- Image data type:', typeof image, this.isAgent); 
+    // console.log(image)
 
     /** @type {{ height: number, width: number, seed: number, infotexts: string[] }} */
     let info = {};
     try {
       info = JSON.parse(generationResponse.data.info);
     } catch (error) {
-      logger.error('[StableDiffusion] Error while getting image metadata:', error);
+      logger.error('[ComfyUI] Error while getting image metadata:', error);
     }
 
     const file_id = uuidv4();
@@ -144,6 +147,7 @@ class StableDiffusionAPI extends Tool {
             text: displayMessage,
           },
         ];
+        console.log(';; cy- return')
         return [response, { content }];
       }
 
@@ -185,11 +189,11 @@ class StableDiffusionAPI extends Tool {
         .toFile(filepath);
       this.result = this.getMarkdownImageUrl(imageName);
     } catch (error) {
-      logger.error('[StableDiffusion] Error while saving the image:', error);
+      logger.error('[ComfyUI] Error while saving the image:', error);
     }
 
     return this.returnValue(this.result);
   }
 }
 
-module.exports = StableDiffusionAPI;
+module.exports = ComfyUIAPI;
