@@ -21,6 +21,7 @@ const {
   FluxAPI,
   OpenWeather,
   StructuredSD,
+  StructuredComfyUI,
   StructuredACS,
   TraversaalSearch,
   StructuredWolfram,
@@ -168,6 +169,7 @@ const loadTools = async ({
     open_weather: OpenWeather,
     wolfram: StructuredWolfram,
     'stable-diffusion': StructuredSD,
+    comfyui: StructuredComfyUI,
     'azure-ai-search': StructuredACS,
     traversaal_search: TraversaalSearch,
     tavily_search_results_json: TavilySearchResults,
@@ -245,6 +247,7 @@ const loadTools = async ({
     flux: imageGenOptions,
     dalle: imageGenOptions,
     'stable-diffusion': imageGenOptions,
+    comfyui: imageGenOptions,
     serpapi: { location: 'Austin,Texas,United States', hl: 'en', gl: 'us' },
   };
 
