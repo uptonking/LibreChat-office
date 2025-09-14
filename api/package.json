@@ -55,6 +55,7 @@
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@modelcontextprotocol/sdk": "^1.17.1",
     "@node-saml/passport-saml": "^5.1.0",
+    "@saintno/comfyui-sdk":"^0.2.48",
     "@waylaidwanderer/fetch-event-source": "^3.0.1",
     "axios": "^1.12.1",
     "bcryptjs": "^2.4.3",

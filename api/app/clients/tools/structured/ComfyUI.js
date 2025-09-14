@@ -9,6 +9,8 @@ const { Tool } = require('@langchain/core/tools');
 const { FileContext, ContentTypes } = require('librechat-data-provider');
 const paths = require('~/config/paths');
 const { logger } = require('~/config');
+const { ComfyApi, CallWrapper, PromptBuilder, TSamplerName, TSchedulerName } = require("@saintno/comfyui-sdk");
+const ExampleTxt2ImgWorkflowSD15 = require("./comfyui-example-woekflow-sd15.json");
 
 const displayMessage =
   "ComfyUI displayed an image. All generated images are already plainly visible, so don't repeat the descriptions in detail. Do not list download links as they are available in the UI already. The user may download the images by clicking on them, but do not mention anything about downloading to the user.";
@@ -32,7 +34,7 @@ class ComfyUIAPI extends Tool {
     }
 
     this.name = 'comfyui';
-    this.url = fields.SD_WEBUI_URL || this.getServerURL();
+    this.url = fields.COMFYUI_URL || this.getServerURL();
     this.description_for_model = `// Generate images and visuals using text.
 // Guidelines:
 // - ALWAYS use {{"prompt": "5+ detailed keywords", "negative_prompt": "5+ detailed keywords"}} structure for queries.
@@ -82,43 +84,115 @@ class ComfyUIAPI extends Tool {
   }
 
   getServerURL() {
-    const url = process.env.SD_WEBUI_URL || '';
+    const url = process.env.COMFYUI_URL || '';
     if (!url && !this.override) {
-      throw new Error('Missing SD_WEBUI_URL environment variable.');
+      throw new Error('Missing COMFYUI_URL environment variable.');
     }
     return url;
   }
 
   async _call(data) {
     const url = this.url;
-    const { prompt, negative_prompt } = data;
+    const { prompt, negative_prompt, width, height } = data;
     const payload = {
       prompt,
       negative_prompt,
       cfg_scale: 4.5,
       steps: 6,
-      width: 512,
-      height: 512,
+      width: width || 512,
+      height: height || 512,
+      seed: Math.floor(Math.random() * (999999999999 - 10000000000 + 1) + 10000000000)
     };
+
+    // const api = new ComfyApi("http://localhost:8189").init();
+    const api = new ComfyApi(url).init();
+
+    const Txt2ImgPrompt = new PromptBuilder(
+      ExampleTxt2ImgWorkflowSD15,
+      ["positive", "negative", "checkpoint", "seed", "batch", "step", "cfg", "sampler", "sheduler", "width", "height"],
+      ["images"]
+    )
+      .setInputNode("checkpoint", "4.inputs.ckpt_name")
+      .setInputNode("seed", "3.inputs.seed")
+      .setInputNode("batch", "5.inputs.batch_size")
+      .setInputNode("negative", "7.inputs.text")
+      .setInputNode("positive", "6.inputs.text")
+      .setInputNode("cfg", "3.inputs.cfg")
+      .setInputNode("sampler", "3.inputs.sampler_name")
+      .setInputNode("sheduler", "3.inputs.scheduler")
+      .setInputNode("step", "3.inputs.steps")
+      .setInputNode("width", "5.inputs.width")
+      .setInputNode("height", "5.inputs.height")
+      .setOutputNode("images", "9");
+
+    const workflow = Txt2ImgPrompt.input(
+      "checkpoint",
+      // "SDXL/realvisxlV40_v40LightningBakedvae.safetensors",
+      "sd-v1-5-pruned-emaonly-fp16.safetensors",
+      /** Use the client's osType to encode the path */
+      api.osType
+    )
+      .input("seed", payload.seed)
+      .input("step", 6)
+      .input("cfg", 1)
+      // .input<TSamplerName>("sampler", "dpmpp_2m_sde_gpu")
+      // .input<TSchedulerName>("sheduler", "sgm_uniform")
+      .input("width", 512)
+      .input("height", 512)
+      .input("batch", 1)
+      .input("positive", prompt)
+      .input("negative", negative_prompt);
+
+    async function requestTextToImage() {
+      return new Promise((resolve, reject) => {
+        new CallWrapper(api, workflow)
+          .onFinished(async (data) => {
+            if (Array.isArray(data.images?.images) && data.images.images.length > 0) {
+              // imgUrl value like: http://localhost:8000/view?filename=sd15lcm_00002_.png&type=output&subfolder=lawn
+              const imgUrl = api.getPathImage(data.images.images[0])
+              console.log(imgUrl)
+
+              try {
+                const imgBase64 = await getImageBase64(imgUrl);
+                // console.log('Base64 image data:', imgBase64.substring(0, 100) + '...');
+                resolve(imgBase64.slice(22));
+              } catch (error) {
+                console.error('Failed to convert image to base64:', error);
+                reject(error);
+
+              }
+
+            }
+          })
+          .onFailed((error) => {
+            console.error('Failed to generate image:', error);
+            reject(error);
+          })
+          .onProgress((status) => console.log("image generating...", status.node, `${status.value}/${status.max}`))
+          .run();
+      });
+
+    }
 
     let generationResponse;
     try {
-      generationResponse = await axios.post(`${url}/sdapi/v1/txt2img`, payload);
+      // generationResponse = await axios.post(`${url}/sdapi/v1/txt2img`, payload);
+      generationResponse = await requestTextToImage();
     } catch (error) {
       logger.error('[ComfyUI] Error while generating image:', error);
       return 'Error making API request.';
     }
-    const image = generationResponse.data.images[0];
-    console.log('cy- Image data type:', typeof image, this.isAgent); 
-    // console.log(image)
+    const image = generationResponse;
+    // console.log('cfy- Image data type:', typeof image, this.isAgent);
 
     /** @type {{ height: number, width: number, seed: number, infotexts: string[] }} */
     let info = {};
     try {
-      info = JSON.parse(generationResponse.data.info);
+      info = JSON.parse(generationResponse?.data?.info);
     } catch (error) {
-      logger.error('[ComfyUI] Error while getting image metadata:', error);
+      logger.warn('[ComfyUI] Error while getting image metadata:', error);
     }
+    info = { ...payload, ...info }
 
     const file_id = uuidv4();
     const imageName = `${file_id}.png`;
@@ -147,10 +221,11 @@ class ComfyUIAPI extends Tool {
             text: displayMessage,
           },
         ];
-        console.log(';; cy- return')
+        // console.log(';; cfy- return')
         return [response, { content }];
       }
 
+      // ❓ it seems unused below
       const buffer = Buffer.from(image.split(',', 1)[0], 'base64');
       if (this.returnMetadata && this.uploadImageBuffer && this.req) {
         const file = await this.uploadImageBuffer({
@@ -168,7 +243,7 @@ class ComfyUIAPI extends Tool {
           },
         });
 
-        const generationInfo = info.infotexts[0].split('\n').pop();
+        const generationInfo = info?.infotexts[0].split('\n').pop();
         return {
           ...file,
           prompt,
@@ -183,7 +258,7 @@ class ComfyUIAPI extends Tool {
       await sharp(buffer)
         .withMetadata({
           iptcpng: {
-            parameters: info.infotexts[0],
+            parameters: info?.infotexts[0],
           },
         })
         .toFile(filepath);
@@ -197,3 +272,42 @@ class ComfyUIAPI extends Tool {
 }
 
 module.exports = ComfyUIAPI;
+
+
+
+/**
+* Fetches an image from a URL and converts it to base64 string
+* Works in both Node.js and browser environments
+*/
+async function getImageBase64(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch comfyui image: ${response.status} ${response.statusText}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const resMimeType = response.headers.get('content-type')
+    const mimeType = resMimeType || 'image/png';
+
+    // Check if we're in Node.js environment
+    if (typeof Buffer !== 'undefined') {
+      // Node.js environment
+      const buffer = Buffer.from(arrayBuffer);
+      const base64 = buffer.toString('base64');
+      return `data:${mimeType};base64,${base64}`;
+    } else {
+      // Browser environment
+      return new promises((resolve, reject) => {
+        const blob = new Blob([arrayBuffer], { type: mimeType });
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+  } catch (error) {
+    console.error('Error converting image to base64:', error);
+    throw error;
+  }
+}
