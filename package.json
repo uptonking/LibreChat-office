@@ -153,5 +153,9 @@
       "admin/",
       "packages/"
     ]
+  },
+  "dependencies": {
+    "@smithy/eventstream-codec": "^4.1.1",
+    "@smithy/signature-v4": "^5.2.1"
   }
 }

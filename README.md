@@ -46,6 +46,11 @@
   </a>
 </p>
 
+# 🍴 notes
+- this is a fork of https://github.com/danny-avila/LibreChat
+
+- changelog
+  - 20250914: image generation support local comfyui, with config like `http://127.0.0.1:8000`.
 
 # ✨ Features
 
