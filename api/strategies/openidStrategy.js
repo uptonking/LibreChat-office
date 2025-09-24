@@ -315,6 +315,7 @@ async function setupOpenId() {
       undefined,
       {
         [client.customFetch]: customFetch,
+        execute: [client.allowInsecureRequests],
       },
     );
 
