@@ -96,9 +96,9 @@ class StableDiffusionAPI extends Tool {
       prompt,
       negative_prompt,
       cfg_scale: 4.5,
-      steps: 22,
-      width: 1024,
-      height: 1024,
+      steps: 7,
+      width: 512,
+      height: 512,
     };
     let generationResponse;
     try {

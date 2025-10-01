@@ -180,6 +180,7 @@ export enum AgentCapabilities {
   web_search = 'web_search',
   artifacts = 'artifacts',
   actions = 'actions',
+  context = 'context',
   tools = 'tools',
   chain = 'chain',
   ocr = 'ocr',
@@ -253,6 +254,7 @@ export const defaultAgentCapabilities = [
   AgentCapabilities.web_search,
   AgentCapabilities.artifacts,
   AgentCapabilities.actions,
+  AgentCapabilities.context,
   AgentCapabilities.tools,
   AgentCapabilities.chain,
   AgentCapabilities.ocr,
@@ -887,6 +889,7 @@ export enum KnownEndpoints {
   shuttleai = 'shuttleai',
   'together.ai' = 'together.ai',
   unify = 'unify',
+  vercel = 'vercel',
   xai = 'xai',
 }
 
@@ -923,6 +926,7 @@ export const alternateName = {
   [KnownEndpoints.ollama]: 'Ollama',
   [KnownEndpoints.deepseek]: 'DeepSeek',
   [KnownEndpoints.xai]: 'xAI',
+  [KnownEndpoints.vercel]: 'Vercel',
 };
 
 const sharedOpenAIModels = [
@@ -1144,7 +1148,7 @@ export function validateVisionModel({
   return visionModels.concat(additionalModels).some((visionModel) => model.includes(visionModel));
 }
 
-export const imageGenTools = new Set(['dalle', 'dall-e', 'stable-diffusion', 'flux']);
+export const imageGenTools = new Set(['dalle', 'dall-e', 'stable-diffusion', 'flux', 'comfyui']);
 
 /**
  * Enum for collections using infinite queries
